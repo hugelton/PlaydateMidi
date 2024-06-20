@@ -14,8 +14,8 @@ local interval = 60 / bpm / 24
 local lastTick = 0
 local noteNumber = 60
 local velocity = 127
-
-
+local crankValue = 0
+local crankValueRecent = 0
 
 -- Callback function called when MIDI Clock is received
 function midiClockReceived()
@@ -29,8 +29,12 @@ pdMidi.begin()
 -- Set the callback function for receiving MIDI Clock
 pdMidi.setClockCallback(midiClockReceived)
 
+
+
+
 -- Function to start sending MIDI Clock
 function startSending()
+    pdMidi.startSend()
     isSending = true
     playdate.resetElapsedTime()
     lastTick = 0
@@ -38,6 +42,7 @@ end
 
 -- Function to stop sending MIDI Clock
 function stopSending()
+    pdMidi.stopSend()
     isSending = false
 end
 
@@ -71,9 +76,9 @@ function playdate.update()
 
     -- Send MIDI Note On/Off when B button is pressed/released
     if playdate.buttonJustPressed(playdate.kButtonB) then
-        pdMidi.noteOn(noteNumber, velocity)
+        pdMidi.noteOn(1, noteNumber, velocity)
     elseif playdate.buttonJustReleased(playdate.kButtonB) then
-        pdMidi.noteOff(noteNumber, velocity)
+        pdMidi.noteOff(1, noteNumber, velocity)
     end
 
 
@@ -93,6 +98,19 @@ function playdate.update()
         end
     end
 
+    -- Crank to value
+    local change, acceleratedChange = playdate.getCrankChange()
+
+
+    crankValueRecent = crankValue
+
+    crankValue = math.floor(math.min(127, math.max(0, crankValue + (acceleratedChange * 0.1))))
+    if (crankValueRecent ~= crankValue) then
+        pdMidi.controlChange(1, 1, crankValue)
+    end
+
+
+
     -- Display BPM and sending status
     playdate.graphics.clear()
     playdate.graphics.drawText("*Clock*", 10, 10)
@@ -107,4 +125,10 @@ function playdate.update()
     playdate.graphics.drawText("*Note*", 10, 110)
     playdate.graphics.drawText("Number:" .. noteNumber, 10, 130)
     playdate.graphics.drawText("Ⓑ:note on/off ⬅️➡️:change the note number", 10, 150)
+
+
+    playdate.graphics.drawText("*ControlChange*", 10, 190)
+    -- playdate.graphics.drawText("Number:" .. noteNumber, 10, 130)
+    playdate.graphics.drawText("🎣:change value to Moduration", 10, 210)
+    playdate.graphics.drawText("*" .. crankValue .. "*", 270, 210)
 end
